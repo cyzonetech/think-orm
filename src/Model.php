@@ -98,6 +98,18 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
     protected $table;
 
     /**
+     * 新增自动完成定义
+     * @var array
+     */
+    protected $insert = [];
+
+    /**
+     * 更新自动完成定义
+     * @var array
+     */
+    protected $update = [];
+
+    /**
      * 初始化过的模型.
      * @var array
      */
@@ -252,6 +264,18 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      * @access public
      * @return string
      */
+    public function setName($name): Model
+    {
+        $this->name = $name;
+
+        return $this;
+    }
+
+    /**
+     * 获取当前模型名称
+     * @access public
+     * @return string
+     */
     public function getName(): string
     {
         return $this->name;
@@ -387,7 +411,7 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      * @access private
      * @return void
      */
-    private function initialize(): void
+    protected function initialize(): void
     {
         if (!isset(static::$initialized[static::class])) {
             static::$initialized[static::class] = true;
@@ -410,6 +434,30 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
 
     protected function checkResult($result): void
     {
+    }
+
+    /**
+     * 数据自动完成
+     * @access protected
+     * @param  array $auto 要自动更新的字段列表
+     * @return void
+     */
+    protected function autoCompleteData($auto = [])
+    {
+        foreach ($auto as $field => $value) {
+            if (is_integer($field)) {
+                $field = $value;
+                $value = null;
+            }
+
+            if (!isset($this->data[$field])) {
+                $default = null;
+            } else {
+                $default = $this->data[$field];
+            }
+
+            $this->setAttr($field, !is_null($value) ? $value : $default);
+        }
     }
 
     /**
@@ -592,6 +640,9 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      */
     protected function updateData(): bool
     {
+        // 自动写入
+        $this->autoCompleteData($this->update);
+
         // 事件回调
         if (false === $this->trigger('BeforeUpdate')) {
             return false;
@@ -670,6 +721,9 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
      */
     protected function insertData(string $sequence = null): bool
     {
+        // 自动写入
+        $this->autoCompleteData($this->insert);
+
         if (false === $this->trigger('BeforeInsert')) {
             return false;
         }
